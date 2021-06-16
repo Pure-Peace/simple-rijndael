@@ -1,14 +1,7 @@
-# simple-rijndael
-
-Pure Rust, simple implementation of the rijndael-cbc algorithm for osu! score decryption or encryption.
-
-##
-
-```rust
 #[test]
 fn test_dec() {
-    use simple_rijndael::impls::RijndaelCbc;
-    use simple_rijndael::paddings::ZeroPadding;
+    use crate::impls::RijndaelCbc;
+    use crate::paddings::ZeroPadding;
 
     let key = "osu!-scoreburgr---------20210520".as_bytes().into();
     let iv = vec![
@@ -45,8 +38,8 @@ fn test_dec() {
 
 #[test]
 fn test_enc() {
-    use simple_rijndael::impls::RijndaelCbc;
-    use simple_rijndael::paddings::ZeroPadding;
+    use crate::impls::RijndaelCbc;
+    use crate::paddings::ZeroPadding;
 
     let key = "osu!-scoreburgr---------20210520".as_bytes().into();
     let iv = vec![
@@ -80,5 +73,3 @@ fn test_enc() {
         ])
     )
 }
-
-```
