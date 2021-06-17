@@ -1,6 +1,6 @@
 [package]
 name = "simple-rijndael"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["PurePeace <940857703@qq.com>"]
 edition = "2018"
 license = "MIT"

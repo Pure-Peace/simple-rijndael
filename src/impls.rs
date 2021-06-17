@@ -31,7 +31,6 @@ impl RijndaelCbc<ZeroPadding> {
             block = self.rijndael.encrypt(&block)?;
             ct.extend(block.clone());
             offset += self.rijndael.block_size;
-            println!("{} {}", offset, ppt.len());
 
             if offset >= ppt.len() {
                 break;
