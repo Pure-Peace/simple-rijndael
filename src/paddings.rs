@@ -33,3 +33,25 @@ impl Padding for ZeroPadding {
         Ok(source[..end].into())
     }
 }
+
+#[derive(Debug)]
+pub struct Pkcs7Padding(pub u8);
+
+impl Padding for Pkcs7Padding {
+    #[inline(always)]
+    fn encode(&self, mut input_vec: Vec<u8>) -> Vec<u8> {
+        let pad_size = usize::from(self.0) - (input_vec.len() % usize::from(self.0));
+        input_vec.append(&mut vec![pad_size as u8; pad_size]);
+        input_vec
+    }
+
+    #[inline(always)]
+    fn decode(&self, source: Vec<u8>) -> Result<Vec<u8>, &'static str> {
+        if (source.len() % usize::from(self.0)) != 0 {
+            return Err("Invalid size");
+        };
+        let pad_size = usize::from(source[source.len() - 1]);
+        let end = source.len() - pad_size;
+        Ok(source[..end].into())
+    }
+}
