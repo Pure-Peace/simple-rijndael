@@ -19,19 +19,13 @@ impl Rijndael {
         if !VALID.contains(&key.len()) {
             return Err("Invalid key size");
         }
-        let rounds = if block_size == 32 {
+        let rounds = if block_size == 32 || key.len() == 32 {
             14
         } else {
-            let base = match key.len() {
-                16 => 10,
-                24 => 12,
-                32 => 14,
-                _ => return Err("Invalid key size2"),
-            };
-            if key.len() > 16 {
-                base
+            if block_size == 16 && key.len() == 16 {
+                10
             } else {
-                base + 2
+                12
             }
         };
         let b_c = block_size / 4;
