@@ -2,6 +2,14 @@ use crate::constants::*;
 use crate::types::Cipher;
 use crate::types::CryptResult;
 
+macro_rules! require {
+    ($condition: expr, $err: expr) => {
+        if !$condition {
+            return Err($err.into());
+        }
+    };
+}
+
 #[derive(Debug)]
 pub struct Rijndael {
     pub block_size: usize,
@@ -12,13 +20,9 @@ pub struct Rijndael {
 
 impl Rijndael {
     #[inline(always)]
-    pub fn new(key: Vec<u8>, block_size: usize) -> Result<Self, &'static str> {
-        if !VALID.contains(&block_size) {
-            return Err("Invalid block size");
-        }
-        if !VALID.contains(&key.len()) {
-            return Err("Invalid key size");
-        }
+    pub fn new(key: Vec<u8>, block_size: usize) -> Result<Self, String> {
+        require!(VALID.contains(&block_size), "Invalid block size");
+        require!(VALID.contains(&key.len()), "Invalid key size");
         let rounds = if block_size == 32 || key.len() == 32 {
             14
         } else {
@@ -112,9 +116,7 @@ impl Rijndael {
 
     //#[inline(always)]
     pub fn encrypt(&self, source: &Vec<u8>) -> Result<Cipher, &'static str> {
-        if source.len() != self.block_size {
-            return Err("wrong block length");
-        }
+        require!(source.len() == self.block_size, "wrong block length");
         let b_c = self.block_size / 4;
         let rounds = self.k_e.len() - 1;
         let s_c = match b_c {
@@ -171,10 +173,8 @@ impl Rijndael {
     }
 
     #[inline(always)]
-    pub fn decrypt(&self, block_cipher: &Cipher) -> Result<CryptResult, &'static str> {
-        if block_cipher.len() != self.block_size {
-            return Err("wrong block length");
-        }
+    pub fn decrypt(&self, block_cipher: &Cipher) -> Result<CryptResult, String> {
+        require!(block_cipher.len() == self.block_size, "wrong block length");
         let b_c = self.block_size / 4;
         let rounds = self.k_d.len() - 1;
         let s_c = match b_c {
