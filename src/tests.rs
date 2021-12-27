@@ -73,3 +73,26 @@ fn test_enc() {
         ])
     )
 }
+
+#[test]
+fn test_pkcs7() {
+    use crate::impls::RijndaelCbc;
+    use crate::paddings::Pkcs7Padding;
+
+    let test_data = "This string is used to test Pkcs7Padding";
+    let key = "128 bit key test".as_bytes().into();
+    let iv = "128 bit iv_ test";
+    let r = RijndaelCbc::<Pkcs7Padding>::new(key, 16).unwrap();
+    let result = r.encrypt(iv.as_bytes().into(), test_data.as_bytes().into());
+    assert_eq!(
+        result,
+        Ok(vec![
+            48, 107, 126, 49, 231, 35, 146, 225, 28, 112, 54, 23, 106, 236, 11, 57, 126, 253, 228,
+            202, 30, 190, 239, 164, 0, 255, 148, 52, 176, 36, 32, 241, 163, 213, 33, 243, 202, 7,
+            221, 94, 84, 37, 77, 160, 242, 223, 108, 162,
+        ])
+    );
+
+    let decrypted_result = r.decrypt(iv.as_bytes().into(), result.unwrap());
+    assert_eq!(decrypted_result, Ok(test_data.as_bytes().into()));
+}
