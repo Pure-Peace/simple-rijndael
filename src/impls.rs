@@ -4,7 +4,7 @@ use crate::{
     rijndael::Rijndael,
 };
 
-macro_rules! implRijndaelCBC {
+macro_rules! impl_rijndael_cbc {
     ($padding: ident) => {
         impl RijndaelCbc<$padding> {
             #[inline(always)]
@@ -82,5 +82,5 @@ pub struct RijndaelCbc<P: Padding> {
     pub padding: P,
 }
 
-implRijndaelCBC!(ZeroPadding);
-implRijndaelCBC!(Pkcs7Padding);
+impl_rijndael_cbc!(ZeroPadding);
+impl_rijndael_cbc!(Pkcs7Padding);
