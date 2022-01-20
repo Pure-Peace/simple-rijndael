@@ -1,14 +1,16 @@
+use crate::Errors;
+
 macro_rules! ensure_size {
     ($source: ident, $self: ident) => {
         if ($source.len() % $self.0) != 0 {
-            return Err("Invalid size".into());
+            return Err(Errors::InvalidDataSize);
         };
     };
 }
 
 pub trait Padding {
     fn encode(&self, input_vec: Vec<u8>) -> Vec<u8>;
-    fn decode(&self, source: Vec<u8>) -> Result<Vec<u8>, Vec<u8>>;
+    fn decode(&self, source: Vec<u8>) -> Result<Vec<u8>, Errors>;
 }
 
 #[derive(Debug)]
@@ -23,7 +25,7 @@ impl Padding for ZeroPadding {
     }
 
     #[inline(always)]
-    fn decode(&self, source: Vec<u8>) -> Result<Vec<u8>, Vec<u8>> {
+    fn decode(&self, source: Vec<u8>) -> Result<Vec<u8>, Errors> {
         ensure_size!(source, self);
         let mut offset = source.len();
         if offset == 0 {
@@ -52,7 +54,7 @@ impl Padding for Pkcs7Padding {
     }
 
     #[inline(always)]
-    fn decode(&self, source: Vec<u8>) -> Result<Vec<u8>, Vec<u8>> {
+    fn decode(&self, source: Vec<u8>) -> Result<Vec<u8>, Errors> {
         ensure_size!(source, self);
         let pad_size = source[source.len() - 1];
         let end = source.len() - pad_size as usize;

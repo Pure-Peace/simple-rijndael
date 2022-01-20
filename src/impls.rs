@@ -1,14 +1,14 @@
-use crate::types::CryptResult;
 use crate::{
     paddings::{Padding, Pkcs7Padding, ZeroPadding},
     rijndael::Rijndael,
+    Errors,
 };
 
 macro_rules! impl_rijndael_cbc {
     ($padding: ident) => {
         impl RijndaelCbc<$padding> {
             #[inline(always)]
-            pub fn new(key: Vec<u8>, block_size: usize) -> Result<Self, String> {
+            pub fn new(key: &[u8], block_size: usize) -> Result<Self, Errors> {
                 Ok(Self {
                     rijndael: Rijndael::new(key, block_size)?,
                     padding: $padding(block_size),
@@ -16,11 +16,7 @@ macro_rules! impl_rijndael_cbc {
             }
 
             #[inline(always)]
-            pub fn encrypt(
-                &self,
-                iv: Vec<u8>,
-                source: Vec<u8>,
-            ) -> Result<CryptResult, String> {
+            pub fn encrypt(&self, iv: Vec<u8>, source: Vec<u8>) -> Result<Vec<u8>, Errors> {
                 let ppt = self.padding.encode(source);
                 let mut offset = 0;
                 let mut ct = Vec::with_capacity(ppt.len());
@@ -41,13 +37,9 @@ macro_rules! impl_rijndael_cbc {
             }
 
             #[inline(always)]
-            pub fn decrypt(
-                &self,
-                iv: Vec<u8>,
-                cipher: Vec<u8>,
-            ) -> Result<CryptResult, Vec<u8>> {
+            pub fn decrypt(&self, iv: Vec<u8>, cipher: Vec<u8>) -> Result<Vec<u8>, Errors> {
                 if (cipher.len() % self.rijndael.block_size) != 0 {
-                    return Err("Invalid size".into());
+                    return Err(Errors::InvalidDataSize);
                 }
                 let mut ppt = Vec::with_capacity(cipher.len());
                 let mut offset = 0;

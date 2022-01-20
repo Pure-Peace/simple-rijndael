@@ -1,11 +1,9 @@
-use crate::constants::*;
-use crate::types::Cipher;
-use crate::types::CryptResult;
+use crate::{constants::*, Errors};
 
 macro_rules! require {
     ($condition: expr, $err: expr) => {
         if !$condition {
-            return Err($err.into());
+            return Err($err);
         }
     };
 }
@@ -13,16 +11,15 @@ macro_rules! require {
 #[derive(Debug)]
 pub struct Rijndael {
     pub block_size: usize,
-    pub key: Vec<u8>,
     pub k_e: Vec<Vec<u32>>,
     pub k_d: Vec<Vec<u32>>,
 }
 
 impl Rijndael {
     #[inline(always)]
-    pub fn new(key: Vec<u8>, block_size: usize) -> Result<Self, String> {
-        require!(VALID.contains(&block_size), "Invalid block size");
-        require!(VALID.contains(&key.len()), "Invalid key size");
+    pub fn new(key: &[u8], block_size: usize) -> Result<Self, Errors> {
+        require!(VALID.contains(&block_size), Errors::InvalidBlockSize);
+        require!(VALID.contains(&key.len()), Errors::InvalidKeySize);
         let rounds = if block_size == 32 || key.len() == 32 {
             14
         } else {
@@ -108,15 +105,14 @@ impl Rijndael {
         }
         Ok(Self {
             block_size,
-            key,
             k_e,
             k_d,
         })
     }
 
     //#[inline(always)]
-    pub fn encrypt(&self, source: &Vec<u8>) -> Result<Cipher, &'static str> {
-        require!(source.len() == self.block_size, "wrong block length");
+    pub fn encrypt(&self, source: &Vec<u8>) -> Result<Vec<u8>, Errors> {
+        require!(source.len() == self.block_size, Errors::InvalidBlockSize);
         let b_c = self.block_size / 4;
         let rounds = self.k_e.len() - 1;
         let s_c = match b_c {
@@ -173,8 +169,11 @@ impl Rijndael {
     }
 
     #[inline(always)]
-    pub fn decrypt(&self, block_cipher: &Cipher) -> Result<CryptResult, String> {
-        require!(block_cipher.len() == self.block_size, "wrong block length");
+    pub fn decrypt(&self, block_cipher: &Vec<u8>) -> Result<Vec<u8>, Errors> {
+        require!(
+            block_cipher.len() == self.block_size,
+            Errors::InvalidBlockSize
+        );
         let b_c = self.block_size / 4;
         let rounds = self.k_d.len() - 1;
         let s_c = match b_c {

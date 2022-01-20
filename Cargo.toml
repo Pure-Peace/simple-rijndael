@@ -1,8 +1,8 @@
 [package]
 name = "simple-rijndael"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["PurePeace <940857703@qq.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 repository = "https://github.com/pure-peace/simple-rijndael"
 description = "Pure Rust, simple implementation of the rijndael-cbc algorithm for osu! score decryption or encryption."
@@ -11,3 +11,12 @@ description = "Pure Rust, simple implementation of the rijndael-cbc algorithm fo
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+
+[dev-dependencies]
+criterion = "0.3"
+
+
+[[bench]]
+name = "rijndael_bench"
+harness = false
