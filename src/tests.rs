@@ -1,5 +1,7 @@
 use crate::Errors;
 
+const OSU_KEY: &[u8; 32] = b"osu!-scoreburgr---------20210520";
+
 #[test]
 fn test_dec() {
     assert_eq!(
@@ -40,13 +42,11 @@ fn test_pkcs7() {
     use crate::impls::RijndaelCbc;
     use crate::paddings::Pkcs7Padding;
 
-    let test_data = "This string is used to test Pkcs7Padding";
-    let key = "128 bit key test".as_bytes().into();
-    let iv = "128 bit iv_ test";
+    let test_data = b"This string is used to test Pkcs7Padding".to_vec();
+    let key = b"128 bit key test";
+    let iv = b"128 bit iv_ test";
     let r = RijndaelCbc::<Pkcs7Padding>::new(key, 16).unwrap();
-    let result = r
-        .encrypt(iv.as_bytes().into(), test_data.as_bytes().into())
-        .unwrap();
+    let result = r.encrypt(iv, test_data.clone()).unwrap();
     assert_eq!(
         result,
         vec![
@@ -56,18 +56,16 @@ fn test_pkcs7() {
         ]
     );
 
-    let decrypted_result = r.decrypt(iv.as_bytes().into(), result).unwrap();
-    assert_eq!(decrypted_result, test_data.as_bytes().to_vec());
+    let decrypted_result = r.decrypt(iv, result).unwrap();
+    assert_eq!(decrypted_result, test_data);
 }
-
-const OSU_KEY: &[u8; 32] = b"osu!-scoreburgr---------20210520";
 
 #[inline(always)]
 pub fn osu_enc() -> Result<Vec<u8>, Errors> {
     use crate::impls::RijndaelCbc;
     use crate::paddings::ZeroPadding;
 
-    let iv = vec![
+    let iv = &[
         240, 124, 26, 154, 27, 186, 98, 170, 95, 190, 213, 103, 13, 128, 39, 59, 217, 84, 68, 144,
         173, 93, 117, 132, 33, 213, 96, 154, 228, 231, 197, 162,
     ];
@@ -89,7 +87,7 @@ pub fn osu_dec() -> Result<Vec<u8>, Errors> {
     use crate::impls::RijndaelCbc;
     use crate::paddings::ZeroPadding;
 
-    let iv = vec![
+    let iv = &[
         240, 124, 26, 154, 27, 186, 98, 170, 95, 190, 213, 103, 13, 128, 39, 59, 217, 84, 68, 144,
         173, 93, 117, 132, 33, 213, 96, 154, 228, 231, 197, 162,
     ];

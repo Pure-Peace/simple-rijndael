@@ -16,19 +16,21 @@ macro_rules! impl_rijndael_cbc {
             }
 
             #[inline(always)]
-            pub fn encrypt(&self, iv: Vec<u8>, source: Vec<u8>) -> Result<Vec<u8>, Errors> {
+            pub fn encrypt(&self, iv: &[u8], source: Vec<u8>) -> Result<Vec<u8>, Errors> {
                 let ppt = self.padding.encode(source);
+                let length = ppt.len();
                 let mut offset = 0;
-                let mut ct = Vec::with_capacity(ppt.len());
-                let mut v = iv;
+                let mut ct = Vec::with_capacity(length);
+                let mut v = iv.into();
+                let mut block;
                 loop {
-                    let mut block = ppt[offset..(offset + self.rijndael.block_size)].into();
-                    block = self.x_or_block(&block, &v);
-                    block = self.rijndael.encrypt(&block)?;
-                    ct.extend(block.clone());
+                    block = self.rijndael.encrypt(
+                        &self.x_or_block(v, &ppt[offset..(offset + self.rijndael.block_size)]),
+                    )?;
+                    ct.extend(&block);
                     offset += self.rijndael.block_size;
 
-                    if offset >= ppt.len() {
+                    if offset >= length {
                         break;
                     }
                     v = block;
@@ -37,20 +39,21 @@ macro_rules! impl_rijndael_cbc {
             }
 
             #[inline(always)]
-            pub fn decrypt(&self, iv: Vec<u8>, cipher: Vec<u8>) -> Result<Vec<u8>, Errors> {
-                if (cipher.len() % self.rijndael.block_size) != 0 {
+            pub fn decrypt(&self, iv: &[u8], cipher: Vec<u8>) -> Result<Vec<u8>, Errors> {
+                let length = cipher.len();
+                if (length % self.rijndael.block_size) != 0 {
                     return Err(Errors::InvalidDataSize);
                 }
-                let mut ppt = Vec::with_capacity(cipher.len());
+                let mut ppt = Vec::with_capacity(length);
                 let mut offset = 0;
                 let mut v = iv;
                 loop {
-                    let block = cipher[offset..(offset + self.rijndael.block_size)].into();
+                    let block = &cipher[offset..(offset + self.rijndael.block_size)];
                     let decrypted = self.rijndael.decrypt(&block)?;
-                    ppt.extend(self.x_or_block(&decrypted, &v));
+                    ppt.append(&mut self.x_or_block(decrypted, v));
                     offset += self.rijndael.block_size;
 
-                    if offset >= cipher.len() {
+                    if offset >= length {
                         break;
                     }
                     v = block;
@@ -59,10 +62,11 @@ macro_rules! impl_rijndael_cbc {
             }
 
             #[inline(always)]
-            pub fn x_or_block(&self, b1: &Vec<u8>, b2: &Vec<u8>) -> Vec<u8> {
-                (0..self.rijndael.block_size)
-                    .map(|i| b1[i] ^ b2[i])
-                    .collect()
+            pub fn x_or_block(&self, mut b1: Vec<u8>, b2: &[u8]) -> Vec<u8> {
+                for i in 0..self.rijndael.block_size {
+                    b1[i] ^= b2[i]
+                }
+                b1
             }
         }
     };

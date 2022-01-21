@@ -32,7 +32,10 @@ impl Padding for ZeroPadding {
             return Ok(vec![]);
         }
         let end = (offset - self.0) + 1;
-        while offset > end {
+        loop {
+            if offset <= end {
+                break;
+            }
             offset -= 1;
             if source.get(offset).is_some() {
                 return Ok(source[..(offset + 1)].into());
