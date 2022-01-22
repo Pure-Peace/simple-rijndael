@@ -8,15 +8,32 @@ macro_rules! ensure_size {
     };
 }
 
+macro_rules! impl_default_members {
+    () => {
+        #[inline(always)]
+        fn new(block_size: usize) -> Self {
+            Self(block_size)
+        }
+
+        #[inline(always)]
+        fn size(&self) -> usize {
+            self.0
+        }
+    };
+}
+
 pub trait Padding {
+    fn new(block_size: usize) -> Self;
+    fn size(&self) -> usize;
     fn encode(&self, input_vec: Vec<u8>) -> Vec<u8>;
     fn decode(&self, source: Vec<u8>) -> Result<Vec<u8>, Errors>;
 }
 
 #[derive(Debug)]
-pub struct ZeroPadding(pub usize);
+pub struct ZeroPadding(usize);
 
 impl Padding for ZeroPadding {
+    impl_default_members!();
     #[inline(always)]
     fn encode(&self, mut input_vec: Vec<u8>) -> Vec<u8> {
         let pad_size = self.0 - ((input_vec.len() + self.0 - 1) % self.0 + 1);
@@ -46,9 +63,10 @@ impl Padding for ZeroPadding {
 }
 
 #[derive(Debug)]
-pub struct Pkcs7Padding(pub usize);
+pub struct Pkcs7Padding(usize);
 
 impl Padding for Pkcs7Padding {
+    impl_default_members!();
     #[inline(always)]
     fn encode(&self, mut input_vec: Vec<u8>) -> Vec<u8> {
         let pad_size = self.0 - (input_vec.len() % self.0);
