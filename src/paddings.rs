@@ -34,11 +34,11 @@ pub struct ZeroPadding(usize);
 
 impl Padding for ZeroPadding {
     impl_default_members!();
+
     #[inline(always)]
-    fn encode(&self, mut input_vec: Vec<u8>) -> Vec<u8> {
+    fn encode(&self, input_vec: Vec<u8>) -> Vec<u8> {
         let pad_size = self.0 - ((input_vec.len() + self.0 - 1) % self.0 + 1);
-        input_vec.append(&mut vec![0u8; pad_size]);
-        input_vec
+        pad_numbers(input_vec, 0, pad_size)
     }
 
     #[inline(always)]
@@ -67,11 +67,11 @@ pub struct Pkcs7Padding(usize);
 
 impl Padding for Pkcs7Padding {
     impl_default_members!();
+
     #[inline(always)]
-    fn encode(&self, mut input_vec: Vec<u8>) -> Vec<u8> {
+    fn encode(&self, input_vec: Vec<u8>) -> Vec<u8> {
         let pad_size = self.0 - (input_vec.len() % self.0);
-        input_vec.append(&mut vec![pad_size as u8; pad_size]);
-        input_vec
+        pad_numbers(input_vec, pad_size as u8, pad_size)
     }
 
     #[inline(always)]
@@ -81,4 +81,17 @@ impl Padding for Pkcs7Padding {
         let end = source.len() - pad_size as usize;
         Ok(source[..end].into())
     }
+}
+
+fn pad_numbers(mut dst: Vec<u8>, src: u8, pad_size: usize) -> Vec<u8> {
+    dst.reserve(pad_size);
+    let length = dst.len();
+    let end = dst.as_mut_ptr();
+    unsafe {
+        for i in 0..pad_size {
+            std::ptr::write(end.add(length + i), src);
+        }
+        dst.set_len(length + pad_size);
+    }
+    dst
 }
