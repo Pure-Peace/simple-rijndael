@@ -1,3 +1,8 @@
+pub type RoundKeys = [[u32; 8]; 15];
+
+pub const ROUND_KEYS: RoundKeys = [[0; 8]; 15];
+pub const EMPTY_BLOCK: [u32; 8] = [0; 8];
+
 pub const SHIFTS: [[[u8; 2]; 4]; 3] = [
     [[0, 0], [1, 3], [2, 2], [3, 1]],
     [[0, 0], [1, 5], [2, 4], [3, 3]],

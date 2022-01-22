@@ -11,8 +11,11 @@ macro_rules! require {
 #[derive(Debug)]
 pub struct Rijndael {
     pub block_size: usize,
-    pub k_e: Vec<Vec<u32>>,
-    pub k_d: Vec<Vec<u32>>,
+    pub rounds: usize,
+    pub b_c: usize,
+    pub s_c: usize,
+    pub k_e: RoundKeys,
+    pub k_d: RoundKeys,
 }
 
 impl Rijndael {
@@ -30,23 +33,27 @@ impl Rijndael {
             }
         };
         let b_c = block_size / 4;
+        let s_c = match b_c {
+            4 => 0,
+            6 => 1,
+            _ => 2,
+        };
         // encryption round keys
-        let mut k_e = vec![vec![0; b_c]; rounds + 1];
+        let mut k_e = ROUND_KEYS;
         // decryption round keys
-        let mut k_d = k_e.clone();
+        let mut k_d = ROUND_KEYS;
         let round_key_count = (rounds + 1) * b_c;
         let k_c = key.len() / 4;
 
         // copy user material bytes into temporary ints
-        let mut tk = (0..k_c)
-            .map(|i| {
-                let s = 4 * i;
-                ((key[s] as u32) << 24)
-                    | ((key[s + 1] as u32) << 16)
-                    | ((key[s + 2] as u32) << 8)
-                    | (key[s + 3] as u32)
-            })
-            .collect::<Vec<u32>>();
+        let mut tk = EMPTY_BLOCK;
+        for i in 0..k_c {
+            let s = 4 * i;
+            tk[i] = ((key[s] as u32) << 24)
+                | ((key[s + 1] as u32) << 16)
+                | ((key[s + 2] as u32) << 8)
+                | (key[s + 3] as u32);
+        }
 
         let mut t = 0;
         let mut j = 0;
@@ -105,6 +112,9 @@ impl Rijndael {
         }
         Ok(Self {
             block_size,
+            rounds,
+            b_c,
+            s_c,
             k_e,
             k_d,
         })
@@ -113,21 +123,14 @@ impl Rijndael {
     //#[inline(always)]
     pub fn encrypt(&self, source: &[u8]) -> Result<Vec<u8>, Errors> {
         require!(source.len() == self.block_size, Errors::InvalidBlockSize);
-        let b_c = self.block_size / 4;
-        let rounds = self.k_e.len() - 1;
-        let s_c = match b_c {
-            4 => 0,
-            6 => 1,
-            _ => 2,
-        };
-        let s1 = SHIFTS[s_c][1][0];
-        let s2 = SHIFTS[s_c][2][0];
-        let s3 = SHIFTS[s_c][3][0];
-        let mut a = [0; 8];
+        let s1 = SHIFTS[self.s_c][1][0];
+        let s2 = SHIFTS[self.s_c][2][0];
+        let s3 = SHIFTS[self.s_c][3][0];
+        let mut a = EMPTY_BLOCK;
         // temporary work array
-        let mut t = [0; 8];
+        let mut t = EMPTY_BLOCK;
         // source to ints + key
-        for i in 0..b_c {
+        for i in 0..self.b_c {
             let s = 4 * i;
             t[i] = ((source[s] as u32) << 24
                 | (source[s + 1] as u32) << 16
@@ -136,39 +139,32 @@ impl Rijndael {
                 ^ self.k_e[0][i];
         }
         // apply round transforms
-        for r in 1..rounds {
-            for i in 0..b_c {
+        for r in 1..self.rounds {
+            for i in 0..self.b_c {
                 a[i] = (T1[(t[i] >> 24) as usize & 0xFF]
-                    ^ T2[(t[(i + s1 as usize) % b_c] >> 16) as usize & 0xFF]
-                    ^ T3[(t[(i + s2 as usize) % b_c] >> 8) as usize & 0xFF]
-                    ^ T4[t[(i + s3 as usize) % b_c] as usize & 0xFF])
+                    ^ T2[(t[(i + s1 as usize) % self.b_c] >> 16) as usize & 0xFF]
+                    ^ T3[(t[(i + s2 as usize) % self.b_c] >> 8) as usize & 0xFF]
+                    ^ T4[t[(i + s3 as usize) % self.b_c] as usize & 0xFF])
                     ^ self.k_e[r][i];
             }
             t = a;
         }
         // last round is special
         let mut result = Vec::with_capacity(source.len());
-        for i in 0..b_c {
-            let tt = self.k_e[rounds][i];
+        for i in 0..self.b_c {
+            let tt = self.k_e[self.rounds][i];
             unsafe {
-                push(
+                push4(
                     &mut result,
                     ((S[((t[i] >> 24) as usize & 0xFF)] as u32 ^ (tt >> 24)) & 0xFF) as u8,
-                );
-                push(
-                    &mut result,
-                    ((S[((t[((i + s1 as usize) % b_c)] >> 16) as usize & 0xFF)] as u32
+                    ((S[((t[((i + s1 as usize) % self.b_c)] >> 16) as usize & 0xFF)] as u32
                         ^ (tt >> 16))
                         & 0xFF) as u8,
-                );
-                push(
-                    &mut result,
-                    ((S[((t[((i + s2 as usize) % b_c)] >> 8) as usize & 0xFF)] as u32 ^ (tt >> 8))
+                    ((S[((t[((i + s2 as usize) % self.b_c)] >> 8) as usize & 0xFF)] as u32
+                        ^ (tt >> 8))
                         & 0xFF) as u8,
-                );
-                push(
-                    &mut result,
-                    ((S[(t[((i + s3 as usize) % b_c)] as usize & 0xFF)] as u32 ^ tt) & 0xFF) as u8,
+                    ((S[(t[((i + s3 as usize) % self.b_c)] as usize & 0xFF)] as u32 ^ tt) & 0xFF)
+                        as u8,
                 );
             }
         }
@@ -181,19 +177,12 @@ impl Rijndael {
             block_cipher.len() == self.block_size,
             Errors::InvalidBlockSize
         );
-        let b_c = self.block_size / 4;
-        let rounds = self.k_d.len() - 1;
-        let s_c = match b_c {
-            4 => 0,
-            6 => 1,
-            _ => 2,
-        };
-        let s1 = SHIFTS[s_c][1][1];
-        let s2 = SHIFTS[s_c][2][1];
-        let s3 = SHIFTS[s_c][3][1];
-        let mut a = [0; 8];
-        let mut t = [0; 8];
-        for i in 0..b_c {
+        let s1 = SHIFTS[self.s_c][1][1];
+        let s2 = SHIFTS[self.s_c][2][1];
+        let s3 = SHIFTS[self.s_c][3][1];
+        let mut a = EMPTY_BLOCK;
+        let mut t = EMPTY_BLOCK;
+        for i in 0..self.b_c {
             let s = 4 * i;
             t[i] = ((block_cipher[s] as u32) << 24
                 | (block_cipher[s + 1] as u32) << 16
@@ -201,38 +190,31 @@ impl Rijndael {
                 | (block_cipher[s + 3] as u32))
                 ^ self.k_d[0][i];
         }
-        for r in 1..rounds {
-            for i in 0..b_c {
+        for r in 1..self.rounds {
+            for i in 0..self.b_c {
                 a[i] = (T5[(t[i] >> 24) as usize & 0xFF]
-                    ^ T6[(t[(i + s1 as usize) % b_c] >> 16) as usize & 0xFF]
-                    ^ T7[(t[(i + s2 as usize) % b_c] >> 8) as usize & 0xFF]
-                    ^ T8[t[(i + s3 as usize) % b_c] as usize & 0xFF])
+                    ^ T6[(t[(i + s1 as usize) % self.b_c] >> 16) as usize & 0xFF]
+                    ^ T7[(t[(i + s2 as usize) % self.b_c] >> 8) as usize & 0xFF]
+                    ^ T8[t[(i + s3 as usize) % self.b_c] as usize & 0xFF])
                     ^ self.k_d[r][i];
             }
             t = a;
         }
         let mut result = Vec::with_capacity(block_cipher.len());
         unsafe {
-            for i in 0..b_c {
-                let tt = self.k_d[rounds][i];
-                push(
+            for i in 0..self.b_c {
+                let tt = self.k_d[self.rounds][i];
+                push4(
                     &mut result,
                     ((SI[((t[i] >> 24) as usize & 0xFF)] as u32 ^ (tt >> 24)) & 0xFF) as u8,
-                );
-                push(
-                    &mut result,
-                    ((SI[((t[((i + s1 as usize) % b_c)] >> 16) as usize & 0xFF)] as u32
+                    ((SI[((t[((i + s1 as usize) % self.b_c)] >> 16) as usize & 0xFF)] as u32
                         ^ (tt >> 16))
                         & 0xFF) as u8,
-                );
-                push(
-                    &mut result,
-                    ((SI[((t[((i + s2 as usize) % b_c)] >> 8) as usize & 0xFF)] as u32 ^ (tt >> 8))
+                    ((SI[((t[((i + s2 as usize) % self.b_c)] >> 8) as usize & 0xFF)] as u32
+                        ^ (tt >> 8))
                         & 0xFF) as u8,
-                );
-                push(
-                    &mut result,
-                    ((SI[(t[((i + s3 as usize) % b_c)] as usize & 0xFF)] as u32 ^ tt) & 0xFF) as u8,
+                    ((SI[(t[((i + s3 as usize) % self.b_c)] as usize & 0xFF)] as u32 ^ tt) & 0xFF)
+                        as u8,
                 );
             }
         }
@@ -240,8 +222,12 @@ impl Rijndael {
     }
 }
 
-unsafe fn push(dst: &mut Vec<u8>, val: u8) {
-    let end = dst.as_mut_ptr().add(dst.len());
-    std::ptr::write(end, val);
-    dst.set_len(dst.len() + 1);
+unsafe fn push4(dst: &mut Vec<u8>, val1: u8, val2: u8, val3: u8, val4: u8) {
+    let length = dst.len();
+    let end = dst.as_mut_ptr();
+    std::ptr::write(end.add(length), val1);
+    std::ptr::write(end.add(length + 1), val2);
+    std::ptr::write(end.add(length + 2), val3);
+    std::ptr::write(end.add(length + 3), val4);
+    dst.set_len(dst.len() + 4);
 }
