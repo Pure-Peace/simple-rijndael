@@ -1,6 +1,11 @@
-use crate::Errors;
+use crate::impls::RijndaelCbc;
+use crate::paddings::ZeroPadding;
 
 const OSU_KEY: &[u8; 32] = b"osu!-scoreburgr---------20210520";
+const OSU_IV: [u8; 32] = [
+    240, 124, 26, 154, 27, 186, 98, 170, 95, 190, 213, 103, 13, 128, 39, 59, 217, 84, 68, 144, 173,
+    93, 117, 132, 33, 213, 96, 154, 228, 231, 197, 162,
+];
 const OSU_DECRYPTED: [u8; 160] = [
     99, 53, 49, 97, 101, 101, 53, 54, 98, 98, 53, 49, 57, 53, 50, 52, 52, 50, 53, 50, 100, 49, 57,
     48, 98, 97, 97, 53, 52, 98, 52, 57, 58, 80, 117, 114, 101, 80, 101, 97, 99, 101, 32, 58, 56,
@@ -23,12 +28,26 @@ const OSU_CRYPTED: [u8; 160] = [
 
 #[test]
 fn test_dec() {
-    assert_eq!(osu_dec().unwrap(), OSU_DECRYPTED.to_vec())
+    let cipher = OSU_CRYPTED.to_vec();
+    assert_eq!(
+        RijndaelCbc::<ZeroPadding>::new(OSU_KEY, 32)
+            .unwrap()
+            .decrypt(&OSU_IV, cipher)
+            .unwrap(),
+        OSU_DECRYPTED.to_vec()
+    )
 }
 
 #[test]
 fn test_enc() {
-    assert_eq!(osu_enc().unwrap(), OSU_CRYPTED.to_vec())
+    let source = OSU_DECRYPTED.to_vec();
+    assert_eq!(
+        RijndaelCbc::<ZeroPadding>::new(OSU_KEY, 32)
+            .unwrap()
+            .encrypt(&OSU_IV, source)
+            .unwrap(),
+        OSU_CRYPTED.to_vec()
+    )
 }
 
 #[test]
@@ -52,30 +71,4 @@ fn test_pkcs7() {
 
     let decrypted_result = r.decrypt(iv, result).unwrap();
     assert_eq!(decrypted_result, test_data);
-}
-
-#[inline(always)]
-pub fn osu_enc() -> Result<Vec<u8>, Errors> {
-    use crate::impls::RijndaelCbc;
-    use crate::paddings::ZeroPadding;
-
-    let iv = &[
-        240, 124, 26, 154, 27, 186, 98, 170, 95, 190, 213, 103, 13, 128, 39, 59, 217, 84, 68, 144,
-        173, 93, 117, 132, 33, 213, 96, 154, 228, 231, 197, 162,
-    ];
-    let source = OSU_DECRYPTED.to_vec();
-    Ok(RijndaelCbc::<ZeroPadding>::new(OSU_KEY, 32)?.encrypt(iv, source)?)
-}
-
-#[inline(always)]
-pub fn osu_dec() -> Result<Vec<u8>, Errors> {
-    use crate::impls::RijndaelCbc;
-    use crate::paddings::ZeroPadding;
-
-    let iv = &[
-        240, 124, 26, 154, 27, 186, 98, 170, 95, 190, 213, 103, 13, 128, 39, 59, 217, 84, 68, 144,
-        173, 93, 117, 132, 33, 213, 96, 154, 228, 231, 197, 162,
-    ];
-    let cipher = OSU_CRYPTED.to_vec();
-    Ok(RijndaelCbc::<ZeroPadding>::new(OSU_KEY, 32)?.decrypt(iv, cipher)?)
 }

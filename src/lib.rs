@@ -1,3 +1,4 @@
+#[cfg(test)]
 pub mod tests;
 
 pub mod constants;
