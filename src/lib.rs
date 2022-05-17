@@ -13,8 +13,10 @@ pub enum Errors {
     InvalidKeySize,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Errors {}
 
+#[cfg(feature = "std")]
 impl std::fmt::Display for Errors {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
