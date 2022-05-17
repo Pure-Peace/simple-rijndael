@@ -10,6 +10,10 @@ description = "Pure Rust, simple implementation of the rijndael-cbc algorithm fo
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["std"]
+std = []
+
 [dependencies]
 
 
