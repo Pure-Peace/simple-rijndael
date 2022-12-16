@@ -1,7 +1,7 @@
 [package]
 name = "simple-rijndael"
 version = "0.3.2"
-authors = ["PurePeace <940857703@qq.com>"]
+authors = ["PurePeace <purepeace_@outlook.com>"]
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/pure-peace/simple-rijndael"
